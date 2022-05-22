@@ -2,7 +2,7 @@ from typing import Iterable, Union, Sequence, Hashable
 
 import networkx as nx
 
-from graphdistance.distances import EditDistance, Levenshtein
+from grapheditdistance.distances import EditDistance, Levenshtein
 
 INIT_NODE, FINAL_NODE = '_^_', '_$_'
 VALUE, NEIGHBORS, WEIGHT = 'value', 'neighbors', 'weight'

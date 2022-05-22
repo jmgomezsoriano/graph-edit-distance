@@ -1,4 +1,4 @@
-from graphdistance.distances import EditDistance
+from grapheditdistance.distances import EditDistance
 from typing import Any, Sequence
 
 

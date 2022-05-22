@@ -1,6 +1,6 @@
 import unittest
 
-from graphdistance.graph import TextGraph
+from grapheditdistance.graph import TextGraph
 
 
 class MyTestCase(unittest.TestCase):
