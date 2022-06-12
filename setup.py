@@ -56,5 +56,11 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     python_requires='>=3.7',
-    install_requires=[]
+    install_requires=[
+        'networkx~=2.8.1',
+        'matplotlib~=3.5.2',
+        'numpy~=1.22.3',
+        'BTrees~=4.10.0',
+        'mysmallutils~=1.0.18'
+    ]
 )
