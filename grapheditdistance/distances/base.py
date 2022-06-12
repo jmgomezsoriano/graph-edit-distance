@@ -15,11 +15,17 @@ class EditDistance(ABC):
                 entities: Sequence) -> List[Tuple[str, float]]:
         return [('default', 1.)]
 
+    @property
+    @abstractmethod
+    def max_cost(self) -> float:
+        pass
+
     @abstractmethod
     def costs(self,
               pos: int,
               entity: Sequence[Hashable],
               graph: BaseGraph,
               curr_node: int,
-              next_node: int) -> List[Operator]:
+              next_node: int,
+              operators: List[Operator]) -> List[Operator]:
         pass

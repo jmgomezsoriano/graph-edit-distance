@@ -1,6 +1,8 @@
 from abc import ABCMeta, ABC, abstractmethod
 from typing import Any, List
 
+from grapheditdistance import FINAL_NODE
+
 
 class Operator(ABC):
     __metaclass__= ABCMeta
@@ -54,6 +56,17 @@ class NoneOperator(Operator):
         return [self.element]
 
 
+class FinalOperator(Operator):
+    def __init__(self) -> None:
+        super().__init__('Final', 0, 0, FINAL_NODE)
+
+    def __repr__(self) -> str:
+        return f'({str(self)})'
+
+    def operate(self) -> List[Any]:
+        return []
+
+
 class InsertOperator(Operator):
     @property
     def inserted_element(self) -> Any:
@@ -67,7 +80,7 @@ class InsertOperator(Operator):
         return f'{self.name}[{self.inserted_element}]'
 
     def operate(self) -> List[Any]:
-        return [self.inserted_element]
+        return []
 
 
 class DeleteOperator(Operator):
@@ -83,7 +96,7 @@ class DeleteOperator(Operator):
         return f'{self.name}[{self.deleted_element}]'
 
     def operate(self) -> List[Any]:
-        return []
+        return [self._element]
 
 
 class ReplaceOperator(Operator):

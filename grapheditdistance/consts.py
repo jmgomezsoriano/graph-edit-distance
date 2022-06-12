@@ -1,0 +1,2 @@
+INIT_NODE = -1
+FINAL_NODE = -2

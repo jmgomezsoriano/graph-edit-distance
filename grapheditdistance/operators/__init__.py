@@ -1,1 +1,1 @@
-from .base import Operator, NoneOperator, InsertOperator, DeleteOperator, ReplaceOperator
+from .base import Operator, NoneOperator, FinalOperator, InsertOperator, DeleteOperator, ReplaceOperator

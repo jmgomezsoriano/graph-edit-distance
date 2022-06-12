@@ -5,14 +5,13 @@ from multiprocessing import cpu_count, Pool
 from mysutils.method import synchronized
 from networkx.classes.reportviews import NodeView
 
+from grapheditdistance import INIT_NODE, FINAL_NODE
 from grapheditdistance.base import BaseGraph, NEIGHBORS, VALUE
 from grapheditdistance.btree import MultivaluedBTree
 from grapheditdistance.distances import EditDistance, Levenshtein
 import matplotlib.pyplot as plt
 
 from grapheditdistance.operators import Operator
-
-INIT_NODE, FINAL_NODE = -1, -2
 
 
 class Graph(BaseGraph):
@@ -123,18 +122,22 @@ class Graph(BaseGraph):
                       operators: List[Operator]) -> List[Tuple[float, Sequence, int, int, list, List[Operator]]]:
         results = []
         for adjacent_node in self.adjacent(node):
-            if adjacent_node != FINAL_NODE or pos < len(entity):
-                for operator in self.distance.costs(pos, entity, self, node, adjacent_node):
-                    new_weight = weight + operator.cost
-                    next_pos = pos + operator.encrease_pos
-                    next_node = operator.next_node
-                    new_path = path + operator.operate()
-                    new_operators = operators + [operator]
-                    results.append((new_weight, entity, next_pos, next_node, new_path, new_operators))
+            # if adjacent_node == FINAL_NODE:
+            #     operators = [NoneOperator('', adjacent_node)]
+            # else:
+            #     operators = self.distance.costs(pos, entity, self, node, adjacent_node)
+            # if adjacent_node != FINAL_NODE or pos < len(entity):
+            for operator in self.distance.costs(pos, entity, self, node, adjacent_node, operators):
+                new_weight = weight + operator.cost
+                next_pos = pos + operator.encrease_pos
+                next_node = operator.next_node
+                new_path = path + operator.operate()
+                new_operators = operators + [operator]
+                results.append((new_weight, entity, next_pos, next_node, new_path, new_operators))
         return results
 
-    def _resolve_path(self, path: List[int]) -> Sequence:
-        return [element for element in path if element not in ['_^_', '_$_']]
+    def _resolve_path(self, path: List[Hashable]) -> Sequence:
+        return path
 
 
 class TextGraph(Graph):
@@ -145,5 +148,5 @@ class TextGraph(Graph):
     def preprocess(self, entity: str) -> str:
         return entity.lower() if self.case_insensitive else entity
 
-    def _resolve_path(self, path: List[int]) -> str:
+    def _resolve_path(self, path: List[Hashable]) -> str:
         return ''.join(super(TextGraph, self)._resolve_path(path))
