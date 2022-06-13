@@ -1,13 +1,13 @@
 from typing import Iterable, Union, Sequence, Hashable, List, Tuple
 import networkx as nx
-from multiprocessing import cpu_count, Pool
+from multiprocessing import cpu_count
 
 from mysutils.method import synchronized
 from networkx.classes.reportviews import NodeView
 
 from grapheditdistance import INIT_NODE, FINAL_NODE
 from grapheditdistance.base import BaseGraph, NEIGHBORS, VALUE
-from grapheditdistance.btree import MultivaluedBTree
+from multivaluedbtree import MultivaluedBTree
 from grapheditdistance.distances import EditDistance, Levenshtein
 import matplotlib.pyplot as plt
 
