@@ -60,7 +60,7 @@ setuptools.setup(
         'networkx~=2.8.1',
         'matplotlib~=3.5.2',
         'numpy~=1.22.3',
-        'BTrees~=4.10.0',
+        'multivaluedbtree~=0.0.1',
         'mysmallutils~=1.0.18'
     ]
 )
