@@ -7,7 +7,7 @@ VALUE, NEIGHBORS, WEIGHT = 'value', 'neighbors', 'weight'
 
 
 class BaseGraph(ABC):
-    """ A abstract graph. """
+    """ An abstract graph. """
     __metaclass__ = ABCMeta
 
     @property

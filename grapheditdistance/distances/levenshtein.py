@@ -110,7 +110,7 @@ class Levenshtein(EditDistance):
 
     def _calculate_delete_cost(self, entity: Sequence[Hashable], operators: List[Operator], value: Hashable) -> float:
         """ Calculate the final insert operation cost depending on if the previous operator is the
-           opposite one (a insert operation) with the same element.
+           opposite one (an insert operation) with the same element.
 
         :param entity: The full entity.
         :param operators: The list of operators to this position.

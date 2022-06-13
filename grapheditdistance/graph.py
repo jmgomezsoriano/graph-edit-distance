@@ -164,7 +164,7 @@ class Graph(BaseGraph):
                 if node == FINAL_NODE and pos == len(entity):
                     similar_entity = self._resolve_path(path)
                     results.append((entity, self._entities.get(similar_entity, similar_entity), weight, operators))
-                # Otherwise, add the path if it weight is less than the limited by the threshold
+                # Otherwise, add the path if its weight is less than the limited by the threshold
                 elif weight <= limit:
                     paths[weight] = (entity, pos, node, path, operators)
                 # If nbest is different to 0, and I've achieved the maximum number of results, return the results.
@@ -182,7 +182,7 @@ class Graph(BaseGraph):
            and the list of applied operators.
         """
         # TODO: Parallel search with processes.
-        pass
+        raise NotImplemented('This method is not implemented yet. It will in future versions of this module,')
 
     def _explore_node(self,
                       weight: float,
