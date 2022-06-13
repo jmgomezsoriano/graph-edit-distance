@@ -1,4 +1,4 @@
-from typing import Tuple, List
+from typing import Tuple, List, Any
 
 from BTrees.OOBTree import OOBTree
 from multiprocessing import Lock
@@ -26,18 +26,29 @@ class MultivaluedBTree(OOBTree):
         self.lock = Lock()
         self.length = 0
 
+    def pop(self, key: Any, default: Any = None) -> Any:
+        self.lock.acquire()
+        try:
+            return self.__pop(key, default)
+        finally:
+            self.lock.release()
+
     def popitem(self) -> Tuple[object, object]:
         self.lock.acquire()
         try:
             key = self.maxKey() if self.decremental_order else self.minKey()
-            values = self[key]
-            value = values.pop()
-            if not values:
-                del self[key]
-            self.length -= 1
+            value = self.__pop(key)
             return key, value
         finally:
             self.lock.release()
+
+    def __pop(self, key: Any, default: Any = None) -> Any:
+        values = self[key] if default is None else self.get(key, [default])
+        value = values.pop()
+        if not values:
+            del self[key]
+        self.length -= 1
+        return value
 
     def __delete__(self, instance: object) -> None:
         self.lock.acquire()
@@ -62,20 +73,16 @@ class MultivaluedBTree(OOBTree):
 
     def __repr__(self):
         return repr({key: values for key, values in self.items()})
-    # def values(self, min: object = None, max: object = None) -> List[object]:
-    #     """
-    #     values([min, max]) -> list of values
-    #
-    #     Returns the values of the BTree.  If min and max are supplied, only
-    #     values corresponding to keys greater than min and less than max are
-    #     returned.
-    #     """
-    #     pass
-    #
-    # def nbest(self, num: int) -> List[object]:
-    #     """
-    #
-    #     :param num:
-    #     :return:
-    #     """
-    #     passlen
+
+    def values(self, minimum: object = None, maximum: object = None) -> List[object]:
+        """
+        values([minimum, maximum]) -> list of values
+
+        Returns the values of the BTree.  If min and max are supplied, only
+        values corresponding to keys greater than min and less than max are
+        returned.
+        """
+        results = []
+        for values in super().values(minimum, maximum):
+            results.extend(values)
+        return results
