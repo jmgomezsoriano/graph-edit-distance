@@ -155,6 +155,7 @@ class Graph(BaseGraph):
         visited_paths = {}
         # Each tuple has the entity to search, the current position in the entity,
         # the current node, the path to arrive here, and the used operators.
+        entity = self.preprocess(entity)
         paths[0.] = (entity, 0, INIT_NODE, [], [])
         limit = len(entity) * (1 - threshold)
         results = []

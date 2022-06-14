@@ -1,0 +1,15 @@
+# Changelog
+
+## [0.0.4] - 2022-06-14
+
+Fixed a bug because the entity to search wasn't preprocessed but the rest of indexed entities were.
+
+## [0.0.3] - 2022-06-14
+
+Fixed a bug with the insertion of similar or equals entities.
+This fixed bug has increase the algorithm performance a lot.
+
+## [0.0.2] - 2022-06-13
+
+First version of the algorithm  almost finished. It already has an error with the graph arrives to the final node.
+The version number started at 0.0.2 by mistake.
