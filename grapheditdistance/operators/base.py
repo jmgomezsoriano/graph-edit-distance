@@ -51,11 +51,26 @@ class Operator(ABC):
 
     def __repr__(self) -> str:
         """ A representation of this operator. """
-        return f'({str(self)}, {self.cost})'
+        return f'({self.name}, {self.cost})'
 
     def __str__(self) -> str:
         """ The name of the operator. """
-        return self.name
+        return repr(self) + f'->{self.next_node}'
+
+    def __hash__(self) -> int:
+        """ Create a hash of this operator .
+
+        :return: An integer that represents the hash.
+        """
+        return hash(str(self))
+
+    def __eq__(self, other: 'Operator') -> bool:
+        """ Compare two operators.
+
+        :param other: Other operator.
+        :return: True if this the same operator, with the same elements, and the same cost.
+        """
+        return str(self) == str(other)
 
     @abstractmethod
     def operate(self) -> List[Any]:
@@ -81,7 +96,7 @@ class NoneOperator(Operator):
 
     def __repr__(self) -> str:
         """ A representation of this operator. """
-        return f'({str(self)})'
+        return f'({self.name})'
 
     def operate(self) -> List[Any]:
         """
@@ -98,7 +113,7 @@ class FinalOperator(Operator):
 
     def __repr__(self) -> str:
         """ A representation of this operator. """
-        return f'({str(self)})'
+        return f'({self.name})'
 
     def operate(self) -> List[Any]:
         """
@@ -127,7 +142,7 @@ class InsertOperator(Operator):
 
     def __repr__(self) -> str:
         """ A representation of this operator. """
-        return f'({str(self)}[{self.inserted_element}], {self.cost})'
+        return f'({self.name}[{self.inserted_element}], {self.cost})'
 
     def operate(self) -> List[Any]:
         """
@@ -156,7 +171,7 @@ class DeleteOperator(Operator):
 
     def __repr__(self) -> str:
         """ A representation of this operator. """
-        return f'({str(self)}[{self.deleted_element}], {self.cost})'
+        return f'({self.name}[{self.deleted_element}], {self.cost})'
 
     def operate(self) -> List[Any]:
         """
@@ -194,7 +209,7 @@ class ReplaceOperator(Operator):
 
     def __repr__(self) -> str:
         """ A representation of this operator. """
-        return f'({str(self)}[{self.from_element} -> {self.to_element}], {self.cost})'
+        return f'({self.name}[{self.from_element} -> {self.to_element}], {self.cost})'
 
     def operate(self) -> List[Any]:
         """

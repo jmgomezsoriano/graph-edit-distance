@@ -48,8 +48,12 @@ class Graph(BaseGraph):
         :param entity: The entity that is adding.
         :return: The id of new node or the reuse one.
         """
-        node = self.get_neighbor(value, prev_node, self.__create_node(value, prev_node))
-        self._add_edge(prev_node, node, pos, entity)
+        neighbors = self.neighbors(prev_node)
+        if value in neighbors:
+            node = neighbors[value]
+        else:
+            node = self.__create_node(value, prev_node)
+            self._add_edge(prev_node, node, pos, entity)
         return node
 
     def __next_node_id(self) -> int:
@@ -148,6 +152,7 @@ class Graph(BaseGraph):
            and the list of applied operators.
         """
         paths = MultivaluedBTree()
+        visited_paths = {}
         # Each tuple has the entity to search, the current position in the entity,
         # the current node, the path to arrive here, and the used operators.
         paths[0.] = (entity, 0, INIT_NODE, [], [])
@@ -157,19 +162,22 @@ class Graph(BaseGraph):
         while len(paths):
             # Get the parameter of the next path to explore with the less edition distance weight
             weight, (entity, pos, node, path, operators) = paths.popitem()
-            # Explore that path and get the next path I can explore
-            next_paths = self._explore_node(weight, entity, pos, node, path, operators)
-            for weight, entity, pos, node, path, operators in next_paths:
-                # If the final node was archived and all the entity was explored, then add it to the result.
-                if node == FINAL_NODE and pos == len(entity):
-                    similar_entity = self._resolve_path(path)
-                    results.append((entity, self._entities.get(similar_entity, similar_entity), weight, operators))
-                # Otherwise, add the path if its weight is less than the limited by the threshold
-                elif weight <= limit:
-                    paths[weight] = (entity, pos, node, path, operators)
-                # If nbest is different to 0, and I've achieved the maximum number of results, return the results.
-                if nbest and len(results) == nbest:
-                    return results
+            path_hash = hash(tuple(operators))
+            if path_hash not in visited_paths:
+                visited_paths[path_hash] = operators
+                # Explore that path and get the next path I can explore
+                next_paths = self._explore_node(weight, entity, pos, node, path, operators)
+                for weight, entity, pos, node, path, operators in next_paths:
+                    # If the final node was archived and all the entity was explored, then add it to the result.
+                    if node == FINAL_NODE and pos == len(entity):
+                        similar_entity = self._resolve_path(path)
+                        results.append((entity, self._entities.get(similar_entity, similar_entity), weight, operators))
+                    # Otherwise, add the path if its weight is less than the limited by the threshold
+                    elif weight <= limit:
+                        paths[weight] = (entity, pos, node, path, operators)
+                    # If nbest is different to 0, and I've achieved the maximum number of results, return the results.
+                    if nbest and len(results) == nbest:
+                        return results
         return results
 
     def search(self, entity: Sequence[Hashable], threshold: float = 0.8, nbest: int = 1) -> List[tuple]:
