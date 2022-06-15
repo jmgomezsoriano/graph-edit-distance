@@ -121,3 +121,89 @@ class Levenshtein(EditDistance):
             return self.max_cost * len(entity)
         else:
             return self.delete_cost(value)
+
+
+class WeightedLevenshtein(Levenshtein):
+    """ A weighted levenshtein algorithm which allows to define different costs to operate with different elements.
+    For example, if you want that to the default cost for insert, delete and replace an element is 1.0, 0.9 and 0.8,
+    respectively, but if you insert or delete a space their costs will be 0.1 and 0.2, respectively, and
+    to replace one 'e' by a 'c', you can do the following::
+
+        lev = WeightedLevenshtein(1, 0.9, 0.8)
+        lev.add_insert_cost(' ', 0.1)
+        lev.add_delete_cost(' ', 0.2)
+        lev.add_replace_cost('e', 'c, 0.5)
+
+    """
+    @property
+    def max_cost(self):
+        """
+        :return: The maximum cost.
+        """
+        return self._max_cost
+
+    def __init__(self, insert_cost: float = 1, delete_cost: float = 1, replace_cost: float = 1) -> None:
+        """ Constructor from the different costs.
+
+        :param insert_cost: The default cost to insert an element.
+        :param delete_cost: The default cost to delete an element.
+        :param replace_cost: The default cost to replace an element by other one.
+        """
+        super().__init__(insert_cost, delete_cost, replace_cost)
+        self._max_cost = max([self._insert_cost, self._delete_cost, self._replace_cost])
+        self._custom_insert_costs = {}
+        self._custom_delete_costs = {}
+        self._custom_replace_costs = {}
+
+    def add_insert_cost(self, element: Any, cost: float) -> None:
+        """ Add an insertion cost for a specific inserted element.
+
+        :param element: The element to insert.
+        :param cost: The cost of inserting that element.
+        """
+        self._custom_insert_costs[element] = cost
+        self._max_cost = max([cost, self._max_cost])
+
+    def add_delete_cost(self, element: Any, cost: float) -> None:
+        """ Add a deletion cost for a specific deleted element.
+
+        :param element: The element to delete.
+        :param cost: The cost of deleting that element.
+        """
+        self._custom_delete_costs[element] = cost
+        self._max_cost = max([cost, self._max_cost])
+
+    def add_replace_cost(self, fr: Any, to: Any, cost: float) -> None:
+        """ Add a replacement cost for a specific replace rule.
+
+        :param fr: The element to replace for.
+        :param to: The element to replace with.
+        :param cost: The cost of replace "fr" by "to" elements.
+        """
+        self._custom_replace_costs[(fr, to)] = cost
+        self._max_cost = max([cost, self._max_cost])
+
+    def insert_cost(self, element: Any) -> float:
+        """ Calculate the insertion cost.
+
+        :param element: The element to insert.
+        :return: The operator cost.
+        """
+        return self._custom_insert_costs.get(element, self._insert_cost)
+
+    def delete_cost(self, element: Any) -> float:
+        """ Calculate the deletion cost.
+
+        :param element: The element to remove.
+        :return: The operator cost.
+        """
+        return self._custom_delete_costs.get(element, self._delete_cost)
+
+    def replace_cost(self, fr: Any, to: Any) -> float:
+        """ Calculate the replacement cost.
+
+        :param fr: The element to replace from.
+        :param to: The element to replace with.
+        :return: The operator cost.
+        """
+        return self._custom_replace_costs.get((fr, to), self._replace_cost)

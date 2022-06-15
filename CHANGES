@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.0.5] - 2022-16-15
+
+Adding weighted levenshtein algorithm.
+
 ## [0.0.4] - 2022-06-14
 
 Fixed a bug because the entity to search wasn't preprocessed but the rest of indexed entities were.

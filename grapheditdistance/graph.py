@@ -192,6 +192,37 @@ class Graph(BaseGraph):
         """
         # TODO: Parallel search with processes.
         raise NotImplemented('This method is not implemented yet. It will in future versions of this module,')
+        paths = MultivaluedBTree()
+        visited_paths = {}
+        # Each tuple has the entity to search, the current position in the entity,
+        # the current node, the path to arrive here, and the used operators.
+        entity = self.preprocess(entity)
+        paths[0.] = (entity, 0, INIT_NODE, [], [])
+        limit = len(entity) * (1 - threshold)
+        results = []
+        # While I have paths to explore
+        while len(paths):
+            # Get the parameter of the next path to explore with the less edition distance weight
+            weight, (entity, pos, node, path, operators) = paths.popitem()
+            path_hash = hash(tuple(operators))
+            if path_hash not in visited_paths:
+                visited_paths[path_hash] = operators
+                self._execute_node(weight, entity, pos, node, path, operators)
+                # Explore that path and get the next path I can explore
+                next_paths = self._explore_node(weight, entity, pos, node, path, operators)
+                for weight, entity, pos, node, path, operators in next_paths:
+                    # If the final node was archived and all the entity was explored, then add it to the result.
+                    if node == FINAL_NODE and pos == len(entity):
+                        similar_entity = self._resolve_path(path)
+                        results.append((entity, self._entities.get(similar_entity, similar_entity), weight, operators))
+                    # Otherwise, add the path if its weight is less than the limited by the threshold
+                    elif weight <= limit:
+                        paths[weight] = (entity, pos, node, path, operators)
+                    # If nbest is different to 0, and I've achieved the maximum number of results, return the results.
+                    if nbest and len(results) == nbest:
+                        return results
+
+        return results
 
     def _explore_node(self,
                       weight: float,
