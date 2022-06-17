@@ -1,14 +1,10 @@
 # graph-edit-distance
 A set of edit distance edition methods based on graphs.
-These methods allow to calculate the edition cost of an entity (for example a word),
+These methods allow to calculate the edition cost of an entity (for example a word or text),
 among a big quantity of terms with less computational cost than the usual methods.
 
-At the moment, only a normal Levenshtein algorithm is applied, but it is very easy to add new algorithms thanks to
-the project structure.
-
-# Important note
-
-The preprocess parameter in _Graph()_ constructor is not being available in further versions, don't use it, please.
+At the moment, only normal and weighted Levenshtein algorithm are developed,
+but it is very easy to add new algorithms thanks to the project structure.
 
 # Install
 
@@ -43,10 +39,9 @@ Finally, you can calculate the edition distance of a new word against all those 
 
 ```python
 # Search the term with spelling mistakes "Poimt of sales"
-results = g.search('Poimt of sales', threshold=0.8, nbest=0)
+results = g.search('Poimt of sales'.lower(), threshold=0.8, nbest=0)
 # It should return
 [(
-    'poimt of sales',
     'point of sale',
     2.0,
     '[(None), (None), (None), (replace[m -> n], 1), (None), (None), (None), (None), (None), (None), \
@@ -61,8 +56,8 @@ than the given threshold of 0.8 respect to the length of the original entity. Th
 has 15 character, the maximum number of errors is 3 (len(entity) * (1 - threshold)). You can limit the number of best
 results with the parameter _nbest_, 0 for no limit.
 
-By default, _TextGraph_ uses _str.lower()_ to preprocess the entity. However, you can change the preprocess function
-with the parameter _preprocess_:
+If you want an case insentive algorith, you can use _str.lower()_ or _str.upper(). to preprocess both,
+the indexed entities and the searched entity. For example:
 
 ```python
 from grapheditdistance import TextGraph
@@ -70,21 +65,21 @@ from grapheditdistance import TextGraph
 TERMS = ['hello', 'bye', 'goodbye', 'point of sale', 'pointing']
 
 # This is the same as the default parameter
-g = TextGraph(preprocess=str.lower)
-g.index(TERMS)
+g = TextGraph()
+g.index([t.lower() for t in TERMS])
 # Change the preprocess method
-results = g.search('Poimt of sales', threshold=0.8, nbest=0)
+results = g.search('Poimt of sales'.lower(), threshold=0.8, nbest=0)
 print(results)
 
 # To use upper case instead lower case
-g = TextGraph(preprocess=str.upper)
-g.index(TERMS)
+g = TextGraph()
+g.index([t.upper() for t in TERMS])
 # Change the preprocess method
-results = g.search('Poimt of sales', threshold=0.8, nbest=0)
+results = g.search('Poimt of sales'.upper(), threshold=0.8, nbest=0)
 print(results)
 
 # Do not use any entity preprocess
-g = TextGraph(preprocess=None)
+g = TextGraph()
 g.index(TERMS)
 # Change the preprocess method
 results = g.search('Poimt of sales', threshold=0.75, nbest=0, )
@@ -109,8 +104,8 @@ lev.add_delete_cost(' ', 0.1)
 lev.add_replace_cost(' ', '-', 0.1)
 lev.add_replace_cost('-', ' ', 0.1)
 tree = TextGraph(distance=lev)
-tree.index(TERMS)
-results = tree.search('Poi ntof-sales', nbest=1)
+tree.index([t.lower()  for t in TERMS])
+results = tree.search('Poi ntof-sales'.lower(), nbest=1)
 print(results)
 ```
 
@@ -161,7 +156,10 @@ by inheriting from the class _grapheditdistance.operator.Operator_.
 # Other examples of use
 
 At the moment, we have shown text edit distance examples. But, this algorithm can be used with other elements.
-For example, to use it with phonetic distance problems. For example:
+
+## Phonetic symbols
+
+You can use this algorithm with phonetic distance problems. For example:
 
 ```python
 from grapheditdistance import Graph
@@ -183,4 +181,23 @@ g.add(["p", "ˈɔɪ", "n", "t", "ɪ", "ŋ"])
 term = ["h", "ɛ", "l", "əʊ"]
 print(g.search(term))
 # Prints: [(['h', 'ɛ', 'l', 'əʊ'], ['h', 'ˈɛ', 'l', 'əʊ'], 0.1, [(None), (replace[ɛ -> ˈɛ], 0.1), (None), (None), (Final)])]
+```
+
+## Word level
+
+You can also use this algorithm to use in a sequence of words instead of characters. For example,
+we can search if an entity exists giving very low cost value to add or remove stopwords:
+
+```python
+from grapheditdistance.distances import WeightedLevenshtein
+from grapheditdistance import Graph
+
+lev = WeightedLevenshtein()
+lev.add_delete_cost('of', 0.1)
+lev.add_insert_cost('of', 0.1)
+g = Graph(distance=lev)
+g.add(['point', 'of', 'sales'])
+g.add(['pointing'])
+g.add(['reception', 'desk'])
+print(g.search(['point', 'sales']))
 ```

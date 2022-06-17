@@ -23,15 +23,11 @@ class Graph(BaseGraph):
         """
         return self._g.nodes
 
-    def __init__(self,
-                 distance: EditDistance = Levenshtein(),
-                 processors: int = 0,
-                 preprocess: Optional[Callable] = None) -> None:
+    def __init__(self, distance: EditDistance = Levenshtein(), processors: int = 0) -> None:
         """ Constructor of this edition distance graph.
 
         :param distance: The algorithm to obtain the operators to apply in each node.
-        :param processors: The limit of CPU processors to use in a parallel search.
-        :param preprocess: A preprocess function to apply before doing the edition distance computation.
+        :param processors: The limit of CPU processors to use in a parallel search. 0 to use all the CPUs.
         """
         # Create the empty graph and add the init and end node
         self._g = nx.MultiDiGraph()
@@ -39,7 +35,6 @@ class Graph(BaseGraph):
         self._g.add_node(FINAL_NODE, **{NEIGHBORS: {}})
         # Set the rest of the object attributes
         self._processors = processors if processors else cpu_count()
-        self._preprocess = preprocess
         self.distance = distance
         self._entities = {}
 
@@ -99,15 +94,10 @@ class Graph(BaseGraph):
         :param entity: The entity to add.
         """
         if entity:
-            if self._preprocess:
-                processed_entity = self._preprocess(entity)
-                self._entities[processed_entity] = entity
-            else:
-                processed_entity = entity
             node = INIT_NODE
-            for i, c in enumerate(processed_entity):
-                node = self._add_node(c, node, i, processed_entity)
-            self._add_edge(node, FINAL_NODE, len(processed_entity), processed_entity)
+            for i, c in enumerate(entity):
+                node = self._add_node(c, node, i, entity)
+            self._add_edge(node, FINAL_NODE, len(entity), entity)
 
     def draw(self, edge_labels: bool = False) -> None:
         """  Draw this graph.
@@ -163,7 +153,6 @@ class Graph(BaseGraph):
         visited_paths = {}
         # Each tuple has the entity to search, the current position in the entity,
         # the current node, the path to arrive here, and the used operators.
-        entity = self._preprocess(entity) if self._preprocess else entity
         paths[0.] = (entity, 0, INIT_NODE, [], [])
         limit = len(entity) * (1 - threshold)
         results = []
@@ -180,8 +169,7 @@ class Graph(BaseGraph):
                     # If the final node was archived and all the entity was explored, then add it to the result.
                     if node == FINAL_NODE and pos == len(entity):
                         similar_entity = self._resolve_path(path)
-                        similar_entity = self._entities.get(similar_entity, similar_entity) if self._preprocess else similar_entity
-                        results.append((entity, similar_entity, weight, operators))
+                        results.append((similar_entity, weight, operators))
                     # Otherwise, add the path if its weight is less than the limited by the threshold
                     elif weight <= limit:
                         paths[weight] = (entity, pos, node, path, operators)
@@ -205,7 +193,6 @@ class Graph(BaseGraph):
     #     visited_paths = {}
     #     # Each tuple has the entity to search, the current position in the entity,
     #     # the current node, the path to arrive here, and the used operators.
-    #     entity = self.preprocess(entity)
     #     paths[0.] = (entity, 0, INIT_NODE, [], [])
     #     limit = len(entity) * (1 - threshold)
     #     results = []
@@ -274,18 +261,6 @@ class Graph(BaseGraph):
 
 class TextGraph(Graph):
     """ A special edition distance graph for texts. """
-    def __init__(self,
-                 distance: EditDistance = Levenshtein(),
-                 processors: int = 0,
-                 preprocess: Optional[Callable] = str.lower) -> None:
-        """ Constructor of this text edition distance graph.
-
-        :param distance: The algorithm to obtain the operators to apply in each node.
-        :param processors: The limit of CPU processors to use in a parallel search.
-        :param preprocess: A preprocess function to apply before doing the edition distance computation.
-        """
-        super().__init__(distance, processors, preprocess)
-
     def _resolve_path(self, path: List[Hashable]) -> str:
         """ Convert the list of characters to a string.
 

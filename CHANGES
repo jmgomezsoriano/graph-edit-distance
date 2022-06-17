@@ -1,6 +1,14 @@
 # Changelog
 
-## [0.0.5] - 2022-16-15
+## [0.1.0] - 2022-06-17
+
+Removing the entity preprocess from all the code. It was a bad idea to include it.
+
+## [0.0.6] - 2022-06-16
+
+Allowing an entity preprocess function as parameter in the constructor.
+
+## [0.0.5] - 2022-06-15
 
 Adding weighted levenshtein algorithm.
 

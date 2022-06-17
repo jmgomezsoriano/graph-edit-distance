@@ -40,7 +40,7 @@ setuptools.setup(
         'prepublish': PrepublishCommand,
     },
     name='grapheditdistance',
-    version='0.0.6',
+    version='0.1.0',
     url='https://github.com/jmgomezsoriano/graph-edit-distance',
     license='LGPL2',
     author='José Manuel Gómez Soriano',
