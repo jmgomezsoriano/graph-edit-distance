@@ -1,4 +1,4 @@
-from typing import Iterable, Union, Sequence, Hashable, List, Tuple
+from typing import Iterable, Union, Sequence, Hashable, List, Tuple, Callable
 import networkx as nx
 from multiprocessing import cpu_count
 
@@ -12,6 +12,7 @@ from grapheditdistance.distances import EditDistance, Levenshtein
 import matplotlib.pyplot as plt
 
 from grapheditdistance.operators import Operator
+from grapheditdistance.preprocess import dummy_preprocess
 
 
 class Graph(BaseGraph):
@@ -23,7 +24,10 @@ class Graph(BaseGraph):
         """
         return self._g.nodes
 
-    def __init__(self, distance: EditDistance = Levenshtein(), processors: int = 0) -> None:
+    def __init__(self,
+                 distance: EditDistance = Levenshtein(),
+                 processors: int = 0,
+                 preprocess: Callable = dummy_preprocess) -> None:
         """ Constructor of this edition distance graph.
 
         :param distance: The algorithm to obtain the operators to apply in each node.
@@ -35,6 +39,7 @@ class Graph(BaseGraph):
         self._g.add_node(FINAL_NODE, **{NEIGHBORS: {}})
         # Set the rest of the object attributes
         self._processors = processors if processors else cpu_count()
+        self._preprocess = preprocess
         self.distance = distance
         self._entities = {}
 
@@ -94,7 +99,7 @@ class Graph(BaseGraph):
         :param entity: The entity to add.
         """
         if entity:
-            processed_entity = self.preprocess(entity)
+            processed_entity = self._preprocess(entity)
             self._entities[processed_entity] = entity
             node = INIT_NODE
             for i, c in enumerate(processed_entity):
@@ -142,7 +147,7 @@ class Graph(BaseGraph):
         """
         return self.nodes[node].get('value', '_^_' if node == INIT_NODE else '_$_')
 
-    def seq_search(self, entity: Sequence[Hashable], threshold: float = 0.8, nbest: int = 1) -> List[tuple]:
+    def search(self, entity: Sequence[Hashable], threshold: float = 0.8, nbest: int = 1) -> List[tuple]:
         """ Sequential search.
 
         :param entity: The entity to search.
@@ -155,7 +160,7 @@ class Graph(BaseGraph):
         visited_paths = {}
         # Each tuple has the entity to search, the current position in the entity,
         # the current node, the path to arrive here, and the used operators.
-        entity = self.preprocess(entity)
+        entity = self._preprocess(entity)
         paths[0.] = (entity, 0, INIT_NODE, [], [])
         limit = len(entity) * (1 - threshold)
         results = []
@@ -181,48 +186,48 @@ class Graph(BaseGraph):
                         return results
         return results
 
-    def search(self, entity: Sequence[Hashable], threshold: float = 0.8, nbest: int = 1) -> List[tuple]:
-        """ A parallel search.
-
-        :param entity: The entity to search.
-        :param threshold: The edit distance threshold with respect to the length of the entity.
-        :param nbest: The number of best results. If 0, then return all the results that exceed the threshold.
-        :return: A list of tuples with the original entity, the found entity, the edition distance value,
-           and the list of applied operators.
-        """
-        # TODO: Parallel search with processes.
-        raise NotImplemented('This method is not implemented yet. It will in future versions of this module,')
-        paths = MultivaluedBTree()
-        visited_paths = {}
-        # Each tuple has the entity to search, the current position in the entity,
-        # the current node, the path to arrive here, and the used operators.
-        entity = self.preprocess(entity)
-        paths[0.] = (entity, 0, INIT_NODE, [], [])
-        limit = len(entity) * (1 - threshold)
-        results = []
-        # While I have paths to explore
-        while len(paths):
-            # Get the parameter of the next path to explore with the less edition distance weight
-            weight, (entity, pos, node, path, operators) = paths.popitem()
-            path_hash = hash(tuple(operators))
-            if path_hash not in visited_paths:
-                visited_paths[path_hash] = operators
-                self._execute_node(weight, entity, pos, node, path, operators)
-                # Explore that path and get the next path I can explore
-                next_paths = self._explore_node(weight, entity, pos, node, path, operators)
-                for weight, entity, pos, node, path, operators in next_paths:
-                    # If the final node was archived and all the entity was explored, then add it to the result.
-                    if node == FINAL_NODE and pos == len(entity):
-                        similar_entity = self._resolve_path(path)
-                        results.append((entity, self._entities.get(similar_entity, similar_entity), weight, operators))
-                    # Otherwise, add the path if its weight is less than the limited by the threshold
-                    elif weight <= limit:
-                        paths[weight] = (entity, pos, node, path, operators)
-                    # If nbest is different to 0, and I've achieved the maximum number of results, return the results.
-                    if nbest and len(results) == nbest:
-                        return results
-
-        return results
+    # def search(self, entity: Sequence[Hashable], threshold: float = 0.8, nbest: int = 1) -> List[tuple]:
+    #     """ A parallel search.
+    #
+    #     :param entity: The entity to search.
+    #     :param threshold: The edit distance threshold with respect to the length of the entity.
+    #     :param nbest: The number of best results. If 0, then return all the results that exceed the threshold.
+    #     :return: A list of tuples with the original entity, the found entity, the edition distance value,
+    #        and the list of applied operators.
+    #     """
+    #     # TODO: Parallel search with processes.
+    #     raise NotImplemented('This method is not implemented yet. It will in future versions of this module,')
+    #     paths = MultivaluedBTree()
+    #     visited_paths = {}
+    #     # Each tuple has the entity to search, the current position in the entity,
+    #     # the current node, the path to arrive here, and the used operators.
+    #     entity = self.preprocess(entity)
+    #     paths[0.] = (entity, 0, INIT_NODE, [], [])
+    #     limit = len(entity) * (1 - threshold)
+    #     results = []
+    #     # While I have paths to explore
+    #     while len(paths):
+    #         # Get the parameter of the next path to explore with the less edition distance weight
+    #         weight, (entity, pos, node, path, operators) = paths.popitem()
+    #         path_hash = hash(tuple(operators))
+    #         if path_hash not in visited_paths:
+    #             visited_paths[path_hash] = operators
+    #             self._execute_node(weight, entity, pos, node, path, operators)
+    #             # Explore that path and get the next path I can explore
+    #             next_paths = self._explore_node(weight, entity, pos, node, path, operators)
+    #             for weight, entity, pos, node, path, operators in next_paths:
+    #                 # If the final node was archived and all the entity was explored, then add it to the result.
+    #                 if node == FINAL_NODE and pos == len(entity):
+    #                     similar_entity = self._resolve_path(path)
+    #                     results.append((entity, self._entities.get(similar_entity, similar_entity), weight, operators))
+    #                 # Otherwise, add the path if its weight is less than the limited by the threshold
+    #                 elif weight <= limit:
+    #                     paths[weight] = (entity, pos, node, path, operators)
+    #                 # If nbest is different to 0, and I've achieved the maximum number of results, return the results.
+    #                 if nbest and len(results) == nbest:
+    #                     return results
+    #
+    #     return results
 
     def _explore_node(self,
                       weight: float,
@@ -266,25 +271,16 @@ class Graph(BaseGraph):
 class TextGraph(Graph):
     """ A special edition distance graph for texts. """
     def __init__(self,
-                 case_insensitive: bool = True,
                  distance: EditDistance = Levenshtein(),
-                 processors: int = 0) -> None:
+                 processors: int = 0,
+                 preprocess: Callable = str.lower) -> None:
         """ Constructor of this text edition distance graph.
 
         :param case_insensitive: True if convert the entities in lowercase.
         :param distance: The algorithm to obtain the operators to apply in each node.
         :param processors: The limit of CPU processors to use in a parallel search.
         """
-        super().__init__(distance, processors)
-        self.case_insensitive = case_insensitive
-
-    def preprocess(self, entity: str) -> str:
-        """ Convert an entity to lowercase.
-
-        :param entity: The entity to convert.
-        :return: A lowercase entity.
-        """
-        return entity.lower() if self.case_insensitive else entity
+        super().__init__(distance, processors, preprocess)
 
     def _resolve_path(self, path: List[Hashable]) -> str:
         """ Convert the list of characters to a string.

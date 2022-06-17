@@ -52,13 +52,6 @@ class BaseGraph(ABC):
         """
         pass
 
-    def preprocess(self, entity: Sequence[Hashable]) -> Sequence[Hashable]:
-        """ Preprocess an entity before to add to the graph.
-        :param entity: The entity.
-        :return:
-        """
-        return entity
-
     def index(self, entities: Iterable[Sequence[Hashable]]) -> None:
         """ Index several entities.
 
@@ -94,7 +87,7 @@ class BaseGraph(ABC):
         pass
 
     @abstractmethod
-    def seq_search(self, entity: Sequence[Hashable], threshold: float = 0.8, nbest: int = 1) -> List[tuple]:
+    def search(self, entity: Sequence[Hashable], threshold: float = 0.8, nbest: int = 1) -> List[tuple]:
         """ Sequential search.
 
         :param entity: The entity to search.
