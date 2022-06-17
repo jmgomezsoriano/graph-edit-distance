@@ -1,8 +1,7 @@
 import unittest
 
 from grapheditdistance.distances import WeightedLevenshtein
-from grapheditdistance import TextGraph
-from grapheditdistance.preprocess import dummy_preprocess
+from grapheditdistance import TextGraph, Graph
 
 TERMS = ['hello', 'bye', 'goodbye', 'point of sale', 'pointing']
 
@@ -42,7 +41,7 @@ class MyTestCase(unittest.TestCase):
         self.assertListEqual(results, [])  # add assertion here
 
     def test_case_sensitive(self) -> None:
-        g = TextGraph(preprocess=dummy_preprocess)
+        g = TextGraph(preprocess=None)
         g.index(TERMS)
         # First search
         results = g.search('Poimt of sales', nbest=0)
@@ -121,9 +120,8 @@ class MyTestCase(unittest.TestCase):
                '(None), (None), (None), (insert[S], 1), (Final)]'
         self.assertEqual(str(results[0][3]), path)
 
-        from grapheditdistance.preprocess import dummy_preprocess
         # Do not use any entity preprocess
-        g = TextGraph(preprocess=dummy_preprocess)
+        g = TextGraph(preprocess=None)
         g.index(TERMS)
         # Change the preprocess method
         results = g.search('Poimt of sales', threshold=0.75, nbest=0)
@@ -134,6 +132,27 @@ class MyTestCase(unittest.TestCase):
         path = '[(replace[P -> p], 1), (None), (None), (replace[m -> n], 1), (None), (None), (None), (None), (None), ' \
                '(None), (None), (None), (None), (insert[s], 1), (Final)]'
         self.assertEqual(str(results[0][3]), path)
+
+    def test_entity_levenshtein(self) -> None:
+        # I use Graph() instead TextGraph() but with WeightedLevenshtein
+        lev = WeightedLevenshtein()
+        lev.add_replace_cost("ɛ", "ˈɛ", 0.1)
+        lev.add_replace_cost("ˈʊ", "ʊ", 0.1)
+        lev.add_replace_cost("aɪ", "ˈaɪ", 0.1)
+        g = Graph(distance=lev)
+        g.add(["h", "ˈɛ", "l", "əʊ"])
+        g.add(["h", "ɛ", "l", "ə", "ʊ"])
+        g.add(["ɡ", "ˈʊ", "d", "b", "ˈaɪ"])
+        g.add(["p", "ˈɔɪ", "n", "t", " ", "ɒ", "v", " ", "s", "e", "ɪ", "l"])
+        g.add(["p", "ˈɔɪ", "n", "t", "ɪ", "ŋ"])
+
+        # Search a variant of "hello"
+        term = ["h", "ɛ", "l", "əʊ"]
+        results = g.search(term)
+        self.assertListEqual(results[0][0], ['h', 'ɛ', 'l', 'əʊ'])
+        self.assertListEqual(results[0][1], ['h', 'ˈɛ', 'l', 'əʊ'])
+        self.assertEqual(results[0][2], 0.1)
+        self.assertEqual(str(results[0][3]), '[(None), (replace[ɛ -> ˈɛ], 0.1), (None), (None), (Final)]')
 
 
 if __name__ == '__main__':

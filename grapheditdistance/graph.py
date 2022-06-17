@@ -1,4 +1,4 @@
-from typing import Iterable, Union, Sequence, Hashable, List, Tuple, Callable
+from typing import Iterable, Union, Sequence, Hashable, List, Tuple, Callable, Optional
 import networkx as nx
 from multiprocessing import cpu_count
 
@@ -12,7 +12,6 @@ from grapheditdistance.distances import EditDistance, Levenshtein
 import matplotlib.pyplot as plt
 
 from grapheditdistance.operators import Operator
-from grapheditdistance.preprocess import dummy_preprocess
 
 
 class Graph(BaseGraph):
@@ -27,11 +26,12 @@ class Graph(BaseGraph):
     def __init__(self,
                  distance: EditDistance = Levenshtein(),
                  processors: int = 0,
-                 preprocess: Callable = dummy_preprocess) -> None:
+                 preprocess: Optional[Callable] = None) -> None:
         """ Constructor of this edition distance graph.
 
         :param distance: The algorithm to obtain the operators to apply in each node.
         :param processors: The limit of CPU processors to use in a parallel search.
+        :param preprocess: A preprocess function to apply before doing the edition distance computation.
         """
         # Create the empty graph and add the init and end node
         self._g = nx.MultiDiGraph()
@@ -99,8 +99,11 @@ class Graph(BaseGraph):
         :param entity: The entity to add.
         """
         if entity:
-            processed_entity = self._preprocess(entity)
-            self._entities[processed_entity] = entity
+            if self._preprocess:
+                processed_entity = self._preprocess(entity)
+                self._entities[processed_entity] = entity
+            else:
+                processed_entity = entity
             node = INIT_NODE
             for i, c in enumerate(processed_entity):
                 node = self._add_node(c, node, i, processed_entity)
@@ -160,7 +163,7 @@ class Graph(BaseGraph):
         visited_paths = {}
         # Each tuple has the entity to search, the current position in the entity,
         # the current node, the path to arrive here, and the used operators.
-        entity = self._preprocess(entity)
+        entity = self._preprocess(entity) if self._preprocess else entity
         paths[0.] = (entity, 0, INIT_NODE, [], [])
         limit = len(entity) * (1 - threshold)
         results = []
@@ -177,7 +180,8 @@ class Graph(BaseGraph):
                     # If the final node was archived and all the entity was explored, then add it to the result.
                     if node == FINAL_NODE and pos == len(entity):
                         similar_entity = self._resolve_path(path)
-                        results.append((entity, self._entities.get(similar_entity, similar_entity), weight, operators))
+                        similar_entity = self._entities.get(similar_entity, similar_entity) if self._preprocess else similar_entity
+                        results.append((entity, similar_entity, weight, operators))
                     # Otherwise, add the path if its weight is less than the limited by the threshold
                     elif weight <= limit:
                         paths[weight] = (entity, pos, node, path, operators)
@@ -273,12 +277,12 @@ class TextGraph(Graph):
     def __init__(self,
                  distance: EditDistance = Levenshtein(),
                  processors: int = 0,
-                 preprocess: Callable = str.lower) -> None:
+                 preprocess: Optional[Callable] = str.lower) -> None:
         """ Constructor of this text edition distance graph.
 
-        :param case_insensitive: True if convert the entities in lowercase.
         :param distance: The algorithm to obtain the operators to apply in each node.
         :param processors: The limit of CPU processors to use in a parallel search.
+        :param preprocess: A preprocess function to apply before doing the edition distance computation.
         """
         super().__init__(distance, processors, preprocess)
 
