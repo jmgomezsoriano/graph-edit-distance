@@ -12,10 +12,13 @@ from grapheditdistance.distances import EditDistance, Levenshtein
 import matplotlib.pyplot as plt
 
 from grapheditdistance.operators import Operator
+import multiprocessing
+from multiprocessing import Process, Manager
 
 
 class Graph(BaseGraph):
     """ A graph specially suited to calculate edition distances. """
+
     @property
     def nodes(self) -> NodeView:
         """
@@ -178,47 +181,66 @@ class Graph(BaseGraph):
                         return results
         return results
 
-    # def search(self, entity: Sequence[Hashable], threshold: float = 0.8, nbest: int = 1) -> List[tuple]:
-    #     """ A parallel search.
-    #
-    #     :param entity: The entity to search.
-    #     :param threshold: The edit distance threshold with respect to the length of the entity.
-    #     :param nbest: The number of best results. If 0, then return all the results that exceed the threshold.
-    #     :return: A list of tuples with the original entity, the found entity, the edition distance value,
-    #        and the list of applied operators.
-    #     """
-    #     # TODO: Parallel search with processes.
-    #     raise NotImplemented('This method is not implemented yet. It will in future versions of this module,')
-    #     paths = MultivaluedBTree()
-    #     visited_paths = {}
-    #     # Each tuple has the entity to search, the current position in the entity,
-    #     # the current node, the path to arrive here, and the used operators.
-    #     paths[0.] = (entity, 0, INIT_NODE, [], [])
-    #     limit = len(entity) * (1 - threshold)
-    #     results = []
-    #     # While I have paths to explore
-    #     while len(paths):
-    #         # Get the parameter of the next path to explore with the less edition distance weight
-    #         weight, (entity, pos, node, path, operators) = paths.popitem()
-    #         path_hash = hash(tuple(operators))
-    #         if path_hash not in visited_paths:
-    #             visited_paths[path_hash] = operators
-    #             self._execute_node(weight, entity, pos, node, path, operators)
-    #             # Explore that path and get the next path I can explore
-    #             next_paths = self._explore_node(weight, entity, pos, node, path, operators)
-    #             for weight, entity, pos, node, path, operators in next_paths:
-    #                 # If the final node was archived and all the entity was explored, then add it to the result.
-    #                 if node == FINAL_NODE and pos == len(entity):
-    #                     similar_entity = self._resolve_path(path)
-    #                     results.append((entity, self._entities.get(similar_entity, similar_entity), weight, operators))
-    #                 # Otherwise, add the path if its weight is less than the limited by the threshold
-    #                 elif weight <= limit:
-    #                     paths[weight] = (entity, pos, node, path, operators)
-    #                 # If nbest is different to 0, and I've achieved the maximum number of results, return the results.
-    #                 if nbest and len(results) == nbest:
-    #                     return results
-    #
-    #     return results
+    def search_worker(self, entity, threshold, nbest, paths, visited_paths, results):
+        """ Búsqueda paralela.
+
+        usa el mismo código que la busqueda secuencial
+        pero se inicializan las variables que tienen que ser compartidas en otra función
+        que llama a esta y continúa con la ejecución de Search"""
+
+        limit = len(entity) * (1 - threshold)
+        # Mientras haya path que explorar
+        while len(paths):
+            # Obtenemos el parámetro del siguiente path a explorar con el menor edition distance weight
+            weight, (entity, pos, node, path, operators) = paths.popitem()
+            path_hash = hash(tuple(operators))
+            if path_hash not in visited_paths:
+                visited_paths[path_hash] = operators
+                # Exploramos el path y obtenemos el siguiente que se puede explorar
+                next_paths = self._explore_node(weight, entity, pos, node, path, operators)
+                for weight, entity, pos, node, path, operators in next_paths:
+                    # Si hemos llegado al nodo final y toda la entity se ha explorado, la añadimos al resultado
+                    if node == FINAL_NODE and pos == len(entity):
+                        similar_entity = self._resolve_path(path)
+                        results.append((similar_entity, weight, operators))
+                    # Otherwise, la añadimos al path si su peso es menor que el límite del threshold
+                    elif weight <= limit:
+                        paths[weight] = (entity, pos, node, path, operators)
+                    # Si nbest es diferente de 0 y he alcanzado el máximo número de resultados, return los resultados
+                    if nbest and len(results) == nbest:
+                        return results
+        return results
+
+    def search_parallel(self, entity, threshold=0.8, nbest=1):
+        """ Búsqueda paralela.
+            Hacemos compartidas el path, visited_paths y results.
+
+        Las hacemos compartidas debido a que queremos que 2 procesos diferentes sepan
+        qué path está recorriendo el otro proceso para no repetirlo. Además también queremos
+        que diferentes procesos guarden los resultados y que los guarden en la misma lista"""
+        with Manager() as manager:
+            shared_paths = manager.Namespace()
+            shared_paths.MultivaluedBTree = MultivaluedBTree()
+            shared_visited_paths = manager.Namespace()
+            shared_visited_paths.dict = dict()
+            shared_results = manager.Namespace()
+            shared_results.list = list()
+
+            # Inicializamos el path
+            shared_paths.MultivaluedBTree[0.] = (entity, 0, INIT_NODE, [], [])
+            # Obtenemos número de procesos
+            num_processes = multiprocessing.cpu_count()
+            processes = []
+
+            # Lanzamos los procesos
+            for _ in range(num_processes):
+                p = Process(target=self.search_worker, args=(entity, threshold, nbest, shared_paths.MultivaluedBTree, shared_visited_paths.dict, shared_results.list))
+                p.start()
+                processes.append(p)
+            for p in processes:
+                p.join()
+
+            return shared_results.list
 
     def _explore_node(self,
                       weight: float,
@@ -261,6 +283,7 @@ class Graph(BaseGraph):
 
 class TextGraph(Graph):
     """ A special edition distance graph for texts. """
+
     def _resolve_path(self, path: List[Hashable]) -> str:
         """ Convert the list of characters to a string.
 
