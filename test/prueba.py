@@ -59,41 +59,28 @@ class MultivaluedTree(SortedDict):
         return key, value
 
 
-def test(lock, graph):
-
-    # Crear un grafo ordenado
-    graph[2] = ('helado', 0, [])
-    graph[0] = 'coche'
-    graph[1] = 'casa'
-    print(graph.__dict__)
-
-    # Operaciones básicas
-    print("Mínima clave:", graph.min_key())
-    print("Máxima clave:", graph.max_key())
-
-    # Acceder a un elemento
-    print("Valor de '2':", graph[2])
-
-    # Añadir un elemento
-    graph[3] = 'valor'
-    print("Claves del grafo después de añadir '3':", graph.keys())
-
-    # Eliminar un elemento
-    key, value = graph.popitem()
-    print("Elemento eliminado:", key, value)
-
-    tree = MultivaluedTree(lock=lock)
-
-    with open('file.pkl', 'wb') as file:
-        pickle.dump(tree, file)
-
-    with open('file.pkl', 'rb') as file:
-        tree = pickle.load(file)
+def process_task(lock, graph, process_id):
+    for i in range(4):
+        with lock:
+            graph[process_id * 4 + i] = f"value_{process_id}_{i}"
+            print(f"Process {process_id}: Added value_{process_id}_{i}")
 
 
 if __name__ == '__main__':
     manager = multiprocessing.Manager()
     lock = manager.Lock()
-    graph = manager.Namespace().graph = MultivaluedTree(lock=lock)
+    # graph = manager.Namespace().graph = MultivaluedTree(lock=lock)
+    graph_dict = manager.dict()
 
-    test(lock, graph)
+    processes = []
+    for i in range(2):
+        # p = multiprocessing.Process(target=process_task, args=(lock, graph, i))
+        p = multiprocessing.Process(target=process_task, args=(lock, graph_dict, i))
+        processes.append(p)
+        p.start()
+
+    for p in processes:
+        p.join()
+
+    # print("Final graph:", graph)
+    print("Final graph:", graph_dict)
