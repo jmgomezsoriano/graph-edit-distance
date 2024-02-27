@@ -30,54 +30,59 @@ class MultivaluedTree(SortedDict):
         self._length = 0
 
     def min_key(self):
-        """Return the minimum key in the graph."""
+        """Return the minimum key in the namespace.graph."""
         if not self:
-            raise ValueError("Empty graph")
+            raise ValueError("Empty namespace.graph")
         return next(iter(self.keys()))
 
     def max_key(self):
-        """Return the maximum key in the graph."""
+        """Return the maximum key in the namespace.graph."""
         if not self:
-            raise ValueError("Empty graph")
+            raise ValueError("Empty namespace.graph")
         return next(reversed(self.keys()))
 
     def __getitem__(self, key):
-        """Get item from the graph by key."""
+        """Get item from the namespace.graph by key."""
         if key not in self:
-            raise KeyError(f"Key '{key}' not found in graph")
+            raise KeyError(f"Key '{key}' not found in namespace.graph")
         return super().__getitem__(key)
 
     def __setitem__(self, key, value):
-        """Set item in the graph with key and value."""
+        """Set item in the namespace.graph with key and value."""
         if key in self:
-            raise ValueError(f"Key '{key}' already exists in graph")
+            raise ValueError(f"Key '{key}' already exists in namespace.graph")
         super().__setitem__(key, value)
 
     def popitem(self, index=-1):
-        """Remove and return ``(key, value)`` pair at `index` from the graph."""
+        """Remove and return ``(key, value)`` pair at `index` from the namespace.graph."""
         key, value = super().popitem(index)
         return key, value
 
 
-def test():
-    # Crear un Manager
-    manager = multiprocessing.Manager()
+def test(lock, graph):
 
-    # Obtener el espacio de nombres compartido
-    namespace = manager.Namespace()
+    # Crear un grafo ordenado
+    graph[2] = ('helado', 0, [])
+    graph[0] = 'coche'
+    graph[1] = 'casa'
+    print(graph.__dict__)
 
-    # Agregar algunos atributos al espacio de nombres
-    namespace.variable1 = "valor1"
-    namespace.variable2 = "valor2"
+    # Operaciones básicas
+    print("Mínima clave:", graph.min_key())
+    print("Máxima clave:", graph.max_key())
 
-    tree = MultivaluedTree(lock=manager.Lock())
-    print(tree.__dict__)
-    namespace.tree = tree
-    print(namespace.tree.__dict__)
-    clave, valor = tree.popitem()
-    print(clave, valor)
+    # Acceder a un elemento
+    print("Valor de '2':", graph[2])
 
-    tree = MultivaluedTree(lock=manager.Lock())
+    # Añadir un elemento
+    graph[3] = 'valor'
+    print("Claves del grafo después de añadir '3':", graph.keys())
+
+    # Eliminar un elemento
+    key, value = graph.popitem()
+    print("Elemento eliminado:", key, value)
+
+    tree = MultivaluedTree(lock=lock)
 
     with open('file.pkl', 'wb') as file:
         pickle.dump(tree, file)
@@ -87,31 +92,8 @@ def test():
 
 
 if __name__ == '__main__':
-    #test()
-
     manager = multiprocessing.Manager()
-    namespace = manager.Namespace()
+    lock = manager.Lock()
+    graph = manager.Namespace().graph = MultivaluedTree(lock=lock)
 
-    # Crear un grafo ordenado
-    graph = MultivaluedTree(lock=manager.Lock())
-    namespace.graph = graph
-    print(namespace.graph.__dict__)
-    namespace.graph.__setitem__(0, 'helado')
-    namespace.graph.__setitem__(2, 'coche')
-    namespace.graph.__setitem__(1, 'casa')
-    print(namespace.graph.__dict__)
-
-    # Operaciones básicas
-    print("Mínima clave:", namespace.graph.min_key())
-    print("Máxima clave:", namespace.graph.max_key())
-
-    # Acceder a un elemento
-    print("Valor de '2':", namespace.graph[2])
-
-    # Añadir un elemento
-    namespace.graph[3] = 'valor'
-    print("Claves del grafo después de añadir 'd':", namespace.graph.keys())
-
-    # Eliminar un elemento
-    key, value = namespace.graph.popitem()
-    print("Elemento eliminado:", key, value)
+    test(lock, graph)
