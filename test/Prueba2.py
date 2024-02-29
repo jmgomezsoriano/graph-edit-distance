@@ -1,5 +1,6 @@
 import multiprocessing
 
+
 class Node:
     @property
     def key(self):
@@ -69,6 +70,40 @@ class BinaryTree:
             else:
                 self._insert_recursively([node['right']], key, value)
 
+    def delete(self, key):
+        if not self.root:
+            raise KeyError("BinaryTree is empty")
+        self.root[0] = self._delete_recursively(self.root[0], key)
+
+    def _delete_recursively(self, node_key, key):
+        if not node_key:
+            return None
+        node = self.nodes[node_key]
+        if key == node_key:
+            if node['left'] is None and node['right'] is None:
+                del self.nodes[node_key]
+                return None
+            elif node['left'] is None:
+                right_child = node['right']
+                del self.nodes[node_key]
+                return right_child
+            elif node['right'] is None:
+                left_child = node['left']
+                del self.nodes[node_key]
+                return left_child
+            else:
+                successor_key = self._min_key_recursively(node['right'])
+                successor_value = self.nodes[successor_key]['value']
+                self._delete_recursively(node['right'], successor_key)
+                node['key'] = successor_key
+                node['value'] = successor_value
+                return node_key
+        elif key < node_key:
+            node['left'] = self._delete_recursively(node['left'], key)
+        else:
+            node['right'] = self._delete_recursively(node['right'], key)
+        return node_key
+
     def keys(self):
         if not self.root:
             return []
@@ -90,24 +125,24 @@ class BinaryTree:
     def min_key(self):
         if not self.root:
             raise ValueError("BinaryTree is empty")
-        return self._min_key_recursively(self.root)
+        return self._min_key_recursively(self.root[0])
 
     def _min_key_recursively(self, node_key):
-        node = self.nodes[node_key[0]]
+        node = self.nodes[node_key]
         if node['left'] is None:
-            return node_key[0]
-        return self._min_key_recursively([node['left']])
+            return node_key
+        return self._min_key_recursively(node['left'])
 
     def max_key(self):
         if not self.root:
             raise ValueError("BinaryTree is empty")
-        return self._max_key_recursively(self.root)
+        return self._max_key_recursively(self.root[0])
 
     def _max_key_recursively(self, node_key):
-        node = self.nodes[node_key[0]]
+        node = self.nodes[node_key]
         if node['right'] is None:
-            return node_key[0]
-        return self._max_key_recursively([node['right']])
+            return node_key
+        return self._max_key_recursively(node['right'])
 
     def search(self, key):
         return self._search_recursively(self.root, key)
@@ -123,50 +158,25 @@ class BinaryTree:
         else:
             return self._search_recursively([node['right']], key)
 
-    def delete(self, key):
-        self._delete_recursively(self.root, key)
-
-    def _delete_recursively(self, node_key, key):
-        if not node_key:
-            return None
-        node = self.nodes[node_key[0]]
-        if key == node_key[0]:
-            if node['left'] is None and node['right'] is None:  # Verifica si el nodo no tiene hijos
-                del self.nodes[key]  # Elimina el nodo del diccionario
-                self._remove_key_from_parent(node_key, key)  # Llama a _remove_key_from_parent
-            elif node['left'] is None:
-                self.nodes[node_key[0]] = self.nodes[node['right']]
-                self._delete_recursively([node['right']], key)
-            elif node['right'] is None:
-                self.nodes[node_key[0]] = self.nodes[node['left']]
-                self._delete_recursively([node['left']], key)
-            else:
-                min_right_key = self._min_key_recursively([node['right']])
-                self.nodes[node_key[0]] = self.nodes[min_right_key]
-                self._delete_recursively([node['right']], min_right_key)
-        elif key < node_key[0]:
-            self._delete_recursively([node['left']], key)
-        else:
-            self._delete_recursively([node['right']], key)
-
-    def _remove_key_from_parent(self, parent_key, key):
-        parent = self.nodes.get(parent_key[0])  # Utiliza .get() en lugar de la indexación directa
-        if parent:
-            if parent['left'] == key:
-                parent['left'] = None
-            elif parent['right'] == key:
-                parent['right'] = None
-
     def min_value(self):
         if not self.root:
             raise ValueError("BinaryTree is empty")
-        return self._min_value_recursively(self.root)
+        return self._min_value_recursively(self.root[0])
 
     def _min_value_recursively(self, node_key):
-        node = self.nodes[node_key[0]]
+        node = self.nodes[node_key]
         if node['left'] is None:
             return node['value']
-        return self._min_value_recursively([node['left']])
+        return self._min_value_recursively(node['left'])
+
+    def popitem(self):
+        if not self.root:
+            raise KeyError("BinaryTree is empty")
+
+        min_key = self.min_key()  # Obtener la clave mínima
+        min_value = self[min_key]  # Obtener el valor asociado a la clave mínima
+        del self[min_key]  # Eliminar la clave mínima del árbol
+        return min_key, min_value
 
     def __getitem__(self, key):
         node = self.search(key)
@@ -190,7 +200,7 @@ def process_func(shared_tree, i):
 if __name__ == '__main__':
     shared_tree = BinaryTree()
 
-    processes = [multiprocessing.Process(target=process_func, args=(shared_tree, i)) for i in range(3)]
+    processes = [multiprocessing.Process(target=process_func, args=(shared_tree, i)) for i in range(2)]
 
     for process in processes:
         process.start()
@@ -198,17 +208,23 @@ if __name__ == '__main__':
     for process in processes:
         process.join()
 
-    print(shared_tree.root[0], shared_tree.nodes[shared_tree.root[0]]['value'], shared_tree.nodes[shared_tree.root[0]]['left'], shared_tree.nodes[shared_tree.root[0]]['right'])
-    print("Shared BinaryTree keys:", [(key, (value['value'], value['left'], value['right'])) for key, value in shared_tree.nodes.items()])
+    # print(shared_tree.root[0], shared_tree.nodes[shared_tree.root[0]]['value'],
+    #       shared_tree.nodes[shared_tree.root[0]]['left'], shared_tree.nodes[shared_tree.root[0]]['right'])
+    print("Shared BinaryTree keys:", [(key, (value['value'], value['left'], value['right']))
+                                      for key, value in shared_tree.nodes.items()])
     print("Minimum Key:", shared_tree.min_key())
     print("Maximum Key:", shared_tree.max_key())
     print("Keys:", shared_tree.keys())
     shared_tree.__setitem__(10, (2, [], "hola"))
     print("Keys after set:", shared_tree.keys())
-    print("Shared BinaryTree keys:", [(key, (value['value'], value['left'], value['right'])) for key, value in shared_tree.nodes.items()])
+    # print("Shared BinaryTree keys:", [(key, (value['value'], value['left'], value['right']))
+    #                                   for key, value in shared_tree.nodes.items()])
     print("Minimum Value:", shared_tree.min_value())
-    print("Get key 5 value:", shared_tree.__getitem__(5))
-    shared_tree.__delitem__(7)
-    print("Shared BinaryTree keys after delitem:", [(key, (value['value'], value['left'], value['right'])) for key, value in shared_tree.nodes.items()])
-    # Falta poder eliminar la clave eliminada del nodo padre
+    # print("Get key 5 value:", shared_tree.__getitem__(5))
+    print("Get key 10 value:", shared_tree.__getitem__(10))
+    shared_tree.__delitem__(1)
+    print("Shared BinaryTree keys after delitem:", [(key, (value['value'], value['left'], value['right']))
+                                                    for key, value in shared_tree.nodes.items()])
     print("Keys after del:", shared_tree.keys())
+    #key, value = shared_tree.popitem()
+    #print("Trying popitem method:", key, value)
