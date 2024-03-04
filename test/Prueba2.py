@@ -48,61 +48,70 @@ class BinaryTree:
         self.nodes = manager.dict()
         self.root = manager.list()
 
-    def insert(self, key, value):
+    def insert(self, key, value, left=None, right=None):
         if not self.root:
-            self.nodes[key] = {'value': value, 'left': None, 'right': None}
+            self.nodes[key] = {'value': value, 'left': left, 'right': right}
             self.root.append(key)
         else:
-            self._insert_recursively(self.root, key, value)
+            self._insert_recursively(self.root, key, value, left, right)
 
-    def _insert_recursively(self, node_key, key, value):
+    def _insert_recursively(self, node_key, key, value, left=None, right=None):
         node = self.nodes[node_key[0]]
         if key < node_key[0]:
             if node['left'] is None:
                 self.nodes[node_key[0]] = {'value': node['value'], 'left': key, 'right': node['right']}
-                self.nodes[key] = {'value': value, 'left': None, 'right': None}
+                self.nodes[key] = {'value': value, 'left': left, 'right': right}
             else:
-                self._insert_recursively([node['left']], key, value)
+                self._insert_recursively([node['left']], key, value, left, right)
         else:
             if node['right'] is None:
                 self.nodes[node_key[0]] = {'value': node['value'], 'left': node['left'], 'right': key}
-                self.nodes[key] = {'value': value, 'left': None, 'right': None}
+                self.nodes[key] = {'value': value, 'left': left, 'right': right}
             else:
-                self._insert_recursively([node['right']], key, value)
+                self._insert_recursively([node['right']], key, value, left, right)
 
     def delete(self, key):
-        if not self.root:
-            raise KeyError("BinaryTree is empty")
-        self.root[0] = self._delete_recursively(self.root[0], key)
+        self.root = self._delete_recursive(self.root, key)
 
-    def _delete_recursively(self, node_key, key):
+    def _delete_recursive(self, node_key, key):
         if not node_key:
             return None
-        node = self.nodes[node_key]
-        if key == node_key:
-            if node['left'] is None and node['right'] is None:
-                del self.nodes[node_key]
-                return None
-            elif node['left'] is None:
-                right_child = node['right']
-                del self.nodes[node_key]
-                return right_child
-            elif node['right'] is None:
-                left_child = node['left']
-                del self.nodes[node_key]
-                return left_child
-            else:
-                successor_key = self._min_key_recursively(node['right'])
-                successor_value = self.nodes[successor_key]['value']
-                self._delete_recursively(node['right'], successor_key)
-                node['key'] = successor_key
-                node['value'] = successor_value
-                return node_key
-        elif key < node_key:
-            node['left'] = self._delete_recursively(node['left'], key)
+
+        node = self.nodes[node_key[0]]
+
+        if key < node_key[0]:
+            node['left'] = self._delete_recursive([node['left']], key)
+        elif key > node_key[0]:
+            node['right'] = self._delete_recursive([node['right']], key)
         else:
-            node['right'] = self._delete_recursively(node['right'], key)
-        return node_key
+            # Encontrado el nodo a eliminar
+            # Paso 1: Actualizar el padre
+            if node == self.root:
+                self.root = None
+
+            else:
+                parent = self._search_parent_recursively(self.root, key)
+                padre = self.nodes[parent[0]]
+                if self.nodes[parent[0]]["left"] == key:
+                    self.nodes[parent[0]] = {'value': padre['value'], 'left': None, 'right': padre['right']}
+                elif self.nodes[parent[0]]["right"] == key:
+                    self.nodes[parent[0]] = {'value': padre['value'], 'left': padre['left'], 'right': None}
+
+            del self.nodes[node_key[0]]
+            # Paso 2: Comprobar si tiene hijos
+            # Caso 2.2: Tiene hijos
+            if node['left']:
+                # Guardar el hijo izquierdo
+                left_child = node['left']
+                # Insertar el hijo izquierdo en el árbol
+                self.insert(left_child, self.nodes[left_child]['value'], self.nodes[left_child]['left'],
+                            self.nodes[left_child]['right'])
+            if node['right']:
+                # Guardar el hijo derecho
+                right_child = node['right']
+                # Insertar el hijo derecho en el árbol
+                self.insert(right_child, self.nodes[right_child]['value'], self.nodes[right_child]['left'],
+                            self.nodes[right_child]['right'])
 
     def keys(self):
         if not self.root:
@@ -158,6 +167,23 @@ class BinaryTree:
         else:
             return self._search_recursively([node['right']], key)
 
+    def search_parent(self, key):
+        return self._search_parent_recursively(self.root, key)
+
+    def _search_parent_recursively(self, node_key, key):
+        if not node_key:
+            return None
+
+        node = self.nodes[node_key[0]]
+        if key == node_key[0]:
+            return None
+        if key == node['left'] or key == node['right']:
+            return node_key
+        if key < node_key[0]:
+            return self._search_parent_recursively([node['left']], key)
+        else:
+            return self._search_parent_recursively([node['right']], key)
+
     def min_value(self):
         if not self.root:
             raise ValueError("BinaryTree is empty")
@@ -212,19 +238,19 @@ if __name__ == '__main__':
     #       shared_tree.nodes[shared_tree.root[0]]['left'], shared_tree.nodes[shared_tree.root[0]]['right'])
     print("Shared BinaryTree keys:", [(key, (value['value'], value['left'], value['right']))
                                       for key, value in shared_tree.nodes.items()])
-    print("Minimum Key:", shared_tree.min_key())
-    print("Maximum Key:", shared_tree.max_key())
+    #print("Minimum Key:", shared_tree.min_key())
+    #print("Maximum Key:", shared_tree.max_key())
     print("Keys:", shared_tree.keys())
-    shared_tree.__setitem__(10, (2, [], "hola"))
-    print("Keys after set:", shared_tree.keys())
+    #shared_tree.__setitem__(10, (2, [], "hola"))
+    #print("Keys after set:", shared_tree.keys())
     # print("Shared BinaryTree keys:", [(key, (value['value'], value['left'], value['right']))
     #                                   for key, value in shared_tree.nodes.items()])
-    print("Minimum Value:", shared_tree.min_value())
+    #print("Minimum Value:", shared_tree.min_value())
     # print("Get key 5 value:", shared_tree.__getitem__(5))
-    print("Get key 10 value:", shared_tree.__getitem__(10))
-    shared_tree.__delitem__(1)
-    print("Shared BinaryTree keys after delitem:", [(key, (value['value'], value['left'], value['right']))
-                                                    for key, value in shared_tree.nodes.items()])
+    #print("Get key 10 value:", shared_tree.__getitem__(10))
+    shared_tree.__delitem__(5)
+    print("Shared BinaryTree keys:", [(key, (value['value'], value['left'], value['right']))
+                                      for key, value in shared_tree.nodes.items()])
     print("Keys after del:", shared_tree.keys())
     #key, value = shared_tree.popitem()
     #print("Trying popitem method:", key, value)
