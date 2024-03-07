@@ -1,5 +1,6 @@
 from typing import Iterable, Union, Sequence, Hashable, List, Tuple
 import networkx as nx
+import multiprocessing
 from multiprocessing import cpu_count
 
 from mysutils.method import synchronized
@@ -7,45 +8,11 @@ from networkx.classes.reportviews import NodeView
 
 from grapheditdistance import INIT_NODE, FINAL_NODE
 from grapheditdistance.base import BaseGraph, NEIGHBORS, VALUE
-from multivaluedbtree import MultivaluedBTree
+from multivaluedbtree import BinaryTree, MultivaluedBTree
 from grapheditdistance.distances import EditDistance, Levenshtein
 import matplotlib.pyplot as plt
 
-import multiprocessing
 from grapheditdistance.operators import Operator
-from multiprocessing import Process, Manager, Lock
-
-
-def search_worker(entity, nbest, threshold, tree, visited_paths, results):
-    """ Búsqueda paralela.
-
-    usa el mismo código que la busqueda secuencial
-    pero se inicializan las variables que tienen que ser compartidas en otra función
-    que llama a esta y continúa con la ejecución de Search"""
-
-    limit = len(entity) * (1 - threshold)
-    # tree[0.] = (entity, 0, INIT_NODE, [], [])
-    # Mientras haya path que explorar
-    while tree.__len__:
-        # Obtenemos el parámetro del siguiente path a explorar con el menor edition distance weight
-        weight, (entity, pos, node, path, operators) = tree.popitem()
-        path_hash = hash(tuple(operators))
-        if path_hash not in visited_paths:
-            visited_paths[path_hash] = operators
-            # Exploramos el path y obtenemos el siguiente que se puede explorar
-            next_paths = tree._explore_node(weight, entity, pos, node, path, operators)
-            for weight, entity, pos, node, path, operators in next_paths:
-                # Si hemos llegado al nodo final y toda la entity se ha explorado, la añadimos al resultado
-                if node == FINAL_NODE and pos == len(entity):
-                    similar_entity = tree._resolve_path(path)
-                    results.append((similar_entity, weight, operators))
-                # Otherwise, la añadimos al path si su peso es menor que el límite del threshold
-                elif weight <= limit:
-                    tree[weight] = (entity, pos, node, path, operators)
-                # Si nbest es diferente de 0 y he alcanzado el máximo número de resultados, return los resultados
-                if nbest and len(results) == nbest:
-                    return results
-    return results
 
 
 class Graph(BaseGraph):
@@ -213,39 +180,50 @@ class Graph(BaseGraph):
                         return results
         return results
 
-    def search_parallel(self, entity,  nbest=1, threshold=0.8):
-        """ Búsqueda paralela.
-            Hacemos compartidas el path, visited_paths y results.
+    def _worker(self, paths, entity, pos, node, path, operators, weight, limit, results, nbest):
+        next_paths = self._explore_node(weight, entity, pos, node, path, operators)
+        for w, e, p, n, pa, op in next_paths:
+            if n == FINAL_NODE and p == len(e):
+                similar_entity = self._resolve_path(pa)
+                results.append((similar_entity, w, op))
+            elif w <= limit:
+                paths[w] = (e, p, n, pa, op)
+            if nbest and len(results) == nbest:
+                return results
 
-        Las hacemos compartidas debido a que queremos que 2 procesos diferentes sepan
-        qué path está recorriendo el otro proceso para no repetirlo. Además también queremos
-        que diferentes procesos guarden los resultados y que los guarden en la misma lista"""
-        tree = MultivaluedBTree()
-        tree[0.] = (entity, 0, INIT_NODE, [], [])
-        print(tree.__dict__)
-        with Manager() as manager:
-            namespace = manager.Namespace()
-            namespace.tree = tree
-            print(namespace.tree.__dict__)
-            namespace.visited_paths = dict()
-            namespace.shared_results = list()
+    def search_parallel(self, entity: Sequence[Hashable], threshold: float = 0.8, nbest: int = 1) -> List[tuple]:
+        paths = BinaryTree()
+        visited_paths = multiprocessing.Manager().dict()
+        paths[0] = (entity, 0, INIT_NODE, [], [])
+        limit = len(entity) * (1 - threshold)
+        results = multiprocessing.Manager().list()
 
-            # Inicializamos el path
-            #namespace.tree[0.] = (entity, 0, INIT_NODE, [], [])
-            # Obtenemos número de procesos
-            num_processes = 1 #multiprocessing.cpu_count()
-            processes = []
+        while len(paths.keys()):
+            item_popped = paths.popitem()
+            # Extraer valores
+            weight = item_popped[0]
+            datos = item_popped[1]
+            entity = datos['value'][0]
+            pos = datos['value'][1]
+            node = datos['value'][2]
+            path = datos['value'][3]
+            operators = datos['value'][4]
+            path_hash = hash(tuple(operators))
+            if path_hash not in visited_paths:
+                visited_paths[path_hash] = operators
+                processes = []
+                for _ in range(1):  # Puedes ajustar el número de procesos según tu CPU
+                    p = multiprocessing.Process(target=self._worker,
+                                                args=(
+                                                paths, entity, pos, node, path, operators, weight, limit, results, nbest))
+                    processes.append(p)
+                    p.start()
+                for p in processes:
+                    p.join()
+            if nbest and len(results) == nbest:
+                return results
 
-            # Lanzamos los procesos
-            for _ in range(num_processes):
-                p = Process(target=search_worker, args=(entity, nbest, threshold, namespace.tree,
-                                                        namespace.visited_paths, namespace.shared_results))
-                p.start()
-                processes.append(p)
-            for p in processes:
-                p.join()
-
-            return namespace.shared_results
+        return results
 
     def _explore_node(self,
                       weight: float,
