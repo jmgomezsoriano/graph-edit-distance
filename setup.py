@@ -1,4 +1,6 @@
-import os
+import glob
+from shutil import rmtree
+
 import setuptools
 
 with open("README.md", "r", encoding="utf-8") as fh:
@@ -16,7 +18,10 @@ class CleanCommand(setuptools.Command):
         pass
 
     def run(self):
-        os.system('rm -vrf ./build ./dist ./*.pyc ./*.tgz ./*.egg-info')
+        rmtree('build', ignore_errors=True)
+        rmtree('dist', ignore_errors=True)
+        for file in glob.glob('*.egg-info'):
+            rmtree(file)
 
 
 class PrepublishCommand(setuptools.Command):
@@ -59,7 +64,7 @@ setuptools.setup(
     install_requires=[
         'networkx~=2.8.1',
         'matplotlib~=3.5.2',
-        'numpy~=1.22.3',
+        'numpy>=1.22,<1.27',
         'multivaluedbtree~=0.0.1',
         'mysmallutils~=1.0.18'
     ]
