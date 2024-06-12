@@ -30,31 +30,31 @@ class MultivaluedTree(SortedDict):
         self._length = 0
 
     def min_key(self):
-        """Return the minimum key in the namespace.graph."""
+        """Return the minimum key in the graph."""
         if not self:
-            raise ValueError("Empty namespace.graph")
+            raise ValueError("Empty graph")
         return next(iter(self.keys()))
 
     def max_key(self):
-        """Return the maximum key in the namespace.graph."""
+        """Return the maximum key in the graph."""
         if not self:
-            raise ValueError("Empty namespace.graph")
+            raise ValueError("Empty graph")
         return next(reversed(self.keys()))
 
     def __getitem__(self, key):
-        """Get item from the namespace.graph by key."""
+        """Get item from the graph by key."""
         if key not in self:
-            raise KeyError(f"Key '{key}' not found in namespace.graph")
+            raise KeyError(f"Key '{key}' not found in graph")
         return super().__getitem__(key)
 
     def __setitem__(self, key, value):
-        """Set item in the namespace.graph with key and value."""
+        """Set item in the graph with key and value."""
         if key in self:
-            raise ValueError(f"Key '{key}' already exists in namespace.graph")
+            raise ValueError(f"Key '{key}' already exists in graph")
         super().__setitem__(key, value)
 
     def popitem(self, index=-1):
-        """Remove and return ``(key, value)`` pair at `index` from the namespace.graph."""
+        """Remove and return ``(key, value)`` pair at `index` from the graph."""
         key, value = super().popitem(index)
         return key, value
 
