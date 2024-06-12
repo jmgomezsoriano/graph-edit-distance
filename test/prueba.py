@@ -59,28 +59,27 @@ class MultivaluedTree(SortedDict):
         return key, value
 
 
-def process_task(lock, graph, process_id):
+def process_task(graph, process_id):
     for i in range(4):
-        with lock:
-            graph[process_id * 4 + i] = f"value_{process_id}_{i}"
-            print(f"Process {process_id}: Added value_{process_id}_{i}")
+        graph[process_id * 4 + i] = f"value_{process_id}_{i}"
+        print(f"Process {process_id}: Added value_{process_id}_{i}")
+    print(graph.min_key())
 
 
 if __name__ == '__main__':
-    manager = multiprocessing.Manager()
-    lock = manager.Lock()
-    # graph = manager.Namespace().graph = MultivaluedTree(lock=lock)
-    graph_dict = manager.dict()
+    with multiprocessing.Manager() as manager:
+        namespace = manager.Namespace()
+        namespace.graph = MultivaluedTree()
 
-    processes = []
-    for i in range(2):
-        # p = multiprocessing.Process(target=process_task, args=(lock, graph, i))
-        p = multiprocessing.Process(target=process_task, args=(lock, graph_dict, i))
-        processes.append(p)
-        p.start()
+        processes = []
+        for i in range(1):
+            # p = multiprocessing.Process(target=process_task, args=(lock, graph, i))
+            p = multiprocessing.Process(target=process_task, args=(namespace.graph, i))
+            processes.append(p)
+            p.start()
 
-    for p in processes:
-        p.join()
+        for p in processes:
+            p.join()
 
-    # print("Final graph:", graph)
-    print("Final graph:", graph_dict)
+        # print("Final graph:", graph)
+        print("Final graph:", namespace.graph.min_key())
